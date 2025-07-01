@@ -1,5 +1,7 @@
+runpod
 diffusers
 transformers
 torch
 accelerate
 Pillow
+xformers

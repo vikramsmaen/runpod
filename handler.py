@@ -49,14 +49,42 @@ def load_model():
                 logger.info(f"Token length: {len(hf_token)} characters")
                 logger.info(f"Token starts with: {hf_token[:10]}...")  # Log first 10 chars for verification
             
-            pipe = DiffusionPipeline.from_pretrained(
-                "black-forest-labs/FLUX.1-schnell",
-                torch_dtype=torch.float16,
-                cache_dir="/workspace/hf_cache",
-                low_cpu_mem_usage=True,
-                use_safetensors=True,
-                token=hf_token
-            )
+            # Clean up any existing cache to free space
+            import shutil
+            cache_dir = "/workspace/hf_cache"
+            if os.path.exists(cache_dir):
+                logger.info(f"Cleaning existing cache directory: {cache_dir}")
+                shutil.rmtree(cache_dir)
+            os.makedirs(cache_dir, exist_ok=True)
+            
+            # Try FLUX first, fallback to smaller model if space issues
+            try:
+                pipe = DiffusionPipeline.from_pretrained(
+                    "black-forest-labs/FLUX.1-schnell",
+                    torch_dtype=torch.float16,
+                    cache_dir=cache_dir,
+                    low_cpu_mem_usage=True,
+                    use_safetensors=True,
+                    token=hf_token,
+                    local_files_only=False,
+                    force_download=False  # Use cached files if available
+                )
+                logger.info("FLUX.1-schnell loaded successfully")
+            except Exception as flux_error:
+                if "No space left" in str(flux_error) or "Errno 28" in str(flux_error):
+                    logger.warning(f"FLUX model failed due to space: {flux_error}")
+                    logger.info("Falling back to smaller Stable Diffusion model...")
+                    pipe = DiffusionPipeline.from_pretrained(
+                        "runwayml/stable-diffusion-v1-5",
+                        torch_dtype=torch.float16,
+                        cache_dir=cache_dir,
+                        low_cpu_mem_usage=True,
+                        use_safetensors=True,
+                        token=hf_token
+                    )
+                    logger.info("Stable Diffusion v1.5 loaded as fallback")
+                else:
+                    raise flux_error
             logger.info("Model loaded from disk, moving to CUDA...")
             
             # Move to CUDA with memory optimization

@@ -6,10 +6,16 @@ import base64
 from io import BytesIO
 import logging
 import os
+import sys
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+logger.info("Handler script starting...")
+logger.info(f"Python version: {sys.version}")
+logger.info(f"PyTorch version: {torch.__version__}")
+logger.info(f"CUDA available: {torch.cuda.is_available()}")
 
 # Global variable to hold the pipeline
 pipe = None
@@ -27,31 +33,45 @@ def load_model():
             
             logger.info(f"CUDA device count: {torch.cuda.device_count()}")
             logger.info(f"Current CUDA device: {torch.cuda.current_device()}")
+            logger.info(f"GPU memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
             
             # Load with optimizations
+            logger.info("Starting model loading from cache/download...")
+            
+            # Get HuggingFace token from environment
+            hf_token = os.getenv('HF_TOKEN')
+            if not hf_token:
+                logger.warning("HF_TOKEN not found in environment variables")
+            else:
+                logger.info("HF_TOKEN found, using for authentication")
+            
             pipe = DiffusionPipeline.from_pretrained(
                 "black-forest-labs/FLUX.1-schnell",
                 torch_dtype=torch.float16,
                 cache_dir="/workspace/hf_cache",
                 low_cpu_mem_usage=True,
-                use_safetensors=True
+                use_safetensors=True,
+                token=hf_token
             )
+            logger.info("Model loaded from disk, moving to CUDA...")
             
             # Move to CUDA with memory optimization
             pipe = pipe.to("cuda")
+            logger.info("Model moved to CUDA successfully")
             
             # Enable memory efficient attention if available
             if hasattr(pipe, 'enable_xformers_memory_efficient_attention'):
                 try:
                     pipe.enable_xformers_memory_efficient_attention()
                     logger.info("xFormers memory efficient attention enabled")
-                except:
-                    logger.info("xFormers not available, using default attention")
+                except Exception as xform_e:
+                    logger.info(f"xFormers not available: {xform_e}")
             
             logger.info("FLUX.1-schnell model loaded successfully!")
             
         except Exception as e:
             logger.error(f"Failed to load model: {str(e)}")
+            logger.error(f"Error type: {type(e).__name__}")
             raise e
     
     return pipe
@@ -82,4 +102,6 @@ def handler(event):
 
 # Start the serverless function
 if __name__ == "__main__":
+    logger.info("Starting RunPod serverless handler...")
     runpod.serverless.start({"handler": handler})
+    logger.info("RunPod serverless handler started successfully")

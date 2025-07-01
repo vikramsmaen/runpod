@@ -11,16 +11,6 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-download the model to avoid timeout on first request
-# Note: This requires HF_TOKEN to be passed as build arg for gated models
-ARG HF_TOKEN
-ENV HF_TOKEN=$HF_TOKEN
-RUN if [ -n "$HF_TOKEN" ]; then \
-        python -c "from diffusers import DiffusionPipeline; import torch; import os; print('Starting model download...'); pipe = DiffusionPipeline.from_pretrained('black-forest-labs/FLUX.1-schnell', torch_dtype=torch.float16, cache_dir='/workspace/hf_cache', token=os.getenv('HF_TOKEN')); print('Model downloaded successfully')"; \
-    else \
-        echo "HF_TOKEN not provided, model will be downloaded on first request"; \
-    fi
-
 COPY handler.py .
 
 ENV HF_HOME=/workspace/hf_cache

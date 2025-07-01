@@ -16,4 +16,4 @@ COPY handler.py .
 ENV HF_HOME=/workspace/hf_cache
 ENV PYTHONUNBUFFERED=1
 
-CMD ["python", "handler.py"]
+CMD ["python3", "-u", "handler.py"]

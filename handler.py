@@ -87,7 +87,9 @@ def handler(event):
         # Load model lazily on first request
         model_pipe = load_model()
         
-        prompt = event.get("input", {}).get("prompt", "a surreal dreamscape")
+        # Access the input from the event (RunPod standard format)
+        input_data = event['input']
+        prompt = input_data.get("prompt", "a surreal dreamscape")
         logger.info(f"Generating image with prompt: {prompt}")
         
         image = model_pipe(prompt=prompt).images[0]

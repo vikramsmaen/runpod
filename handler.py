@@ -6,7 +6,7 @@ from io import BytesIO
 
 # Load once globally
 pipe = DiffusionPipeline.from_pretrained(
-    "fluxml/flux-fast",
+    "black-forest-labs/FLUX.1-schnell",
     torch_dtype=torch.float16,
     cache_dir="/workspace/hf_cache"
 ).to("cuda")

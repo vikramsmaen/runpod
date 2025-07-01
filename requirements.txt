@@ -1,5 +1,5 @@
-torch
 diffusers
 transformers
+torch
 accelerate
-sentencepiece
+Pillow

@@ -1,27 +1,26 @@
 # handler.py
-
 from diffusers import DiffusionPipeline
 import torch
-import os
-import uuid
+import base64
+from io import BytesIO
 
-# Cache dir (RunPod serverless uses /tmp or mounted volume)
-os.environ["HF_HOME"] = "/tmp/hf_cache"
-os.makedirs(os.environ["HF_HOME"], exist_ok=True)
-
+# Load once globally
 pipe = DiffusionPipeline.from_pretrained(
-    "black-forest-labs/FLUX.1-schnell",
+    "fluxml/flux-fast",
     torch_dtype=torch.float16,
-    cache_dir=os.environ["HF_HOME"]
+    cache_dir="/workspace/hf_cache"
 ).to("cuda")
 
 def handler(event):
-    prompt = event.get("input", {}).get("prompt", "a surreal dreamscape")
-    
-    image = pipe(prompt=prompt).images[0]
-    output_path = f"/tmp/{uuid.uuid4().hex}.png"
-    image.save(output_path)
-    
-    return {
-        "image_path": output_path
-    }
+    try:
+        prompt = event.get("input", {}).get("prompt", "a surreal dreamscape")
+        image = pipe(prompt=prompt).images[0]
+
+        # Convert to base64 string
+        buffer = BytesIO()
+        image.save(buffer, format="PNG")
+        base64_img = base64.b64encode(buffer.getvalue()).decode()
+
+        return {"image_base64": base64_img}
+    except Exception as e:
+        return {"error": str(e)}

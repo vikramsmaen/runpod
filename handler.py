@@ -38,12 +38,16 @@ def load_model():
             # Load with optimizations
             logger.info("Starting model loading from cache/download...")
             
-            # Get HuggingFace token from environment
+            # Get HuggingFace token from environment (RunPod secret)
             hf_token = os.getenv('HF_TOKEN')
             if not hf_token:
-                logger.warning("HF_TOKEN not found in environment variables")
+                logger.error("HF_TOKEN not found in environment variables")
+                logger.error("Available environment variables: " + str([k for k in os.environ.keys() if 'HF' in k.upper() or 'TOKEN' in k.upper()]))
+                raise RuntimeError("HF_TOKEN is required for gated model access")
             else:
-                logger.info("HF_TOKEN found, using for authentication")
+                logger.info("HF_TOKEN found from RunPod secret, using for authentication")
+                logger.info(f"Token length: {len(hf_token)} characters")
+                logger.info(f"Token starts with: {hf_token[:10]}...")  # Log first 10 chars for verification
             
             pipe = DiffusionPipeline.from_pretrained(
                 "black-forest-labs/FLUX.1-schnell",
